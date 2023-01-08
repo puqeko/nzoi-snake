@@ -1,195 +1,195 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <vector>
-#include <string>
 #include <iostream>
-#include <sstream>
-#include <fstream>
+#include <vector>
+#include <chrono>
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
 
-#include <glm/glm.hpp>
-using namespace glm;
+using namespace std;
+// Drawing (display) routine.
 
-GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_path) {
+const int GRID_SIZE_WIDTH = 72;
+const int GRID_SIZE_HEIGHT = 50;
 
-	// Create the shaders
-	GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
-	GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
+struct snake_section {
+  int x;
+  int y;
+  snake_section* tail;
+};
 
-	// Read the Vertex Shader code from the file
-	std::string VertexShaderCode;
-	std::ifstream VertexShaderStream(vertex_file_path, std::ios::in);
-	if(VertexShaderStream.is_open()){
-		std::stringstream sstr;
-		sstr << VertexShaderStream.rdbuf();
-		VertexShaderCode = sstr.str();
-		VertexShaderStream.close();
-	}else{
-		printf("Impossible to open %s. Are you in the right directory ? Don't forget to read the FAQ !\n", vertex_file_path);
-		getchar();
-		return 0;
-	}
+snake_section head{};
+enum direction {
+  LEFT,
+  UP,
+  RIGHT,
+  DOWN
+} direction;
 
-	// Read the Fragment Shader code from the file
-	std::string FragmentShaderCode;
-	std::ifstream FragmentShaderStream(fragment_file_path, std::ios::in);
-	if(FragmentShaderStream.is_open()){
-		std::stringstream sstr;
-		sstr << FragmentShaderStream.rdbuf();
-		FragmentShaderCode = sstr.str();
-		FragmentShaderStream.close();
-	}
+void square_at(int x, int y);
 
-	GLint Result = GL_FALSE;
-	int InfoLogLength;
-
-	// Compile Vertex Shader
-	printf("Compiling shader : %s\n", vertex_file_path);
-	char const * VertexSourcePointer = VertexShaderCode.c_str();
-	glShaderSource(VertexShaderID, 1, &VertexSourcePointer , NULL);
-	glCompileShader(VertexShaderID);
-
-	// Check Vertex Shader
-	glGetShaderiv(VertexShaderID, GL_COMPILE_STATUS, &Result);
-	glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	if ( InfoLogLength > 0 ){
-		std::vector<char> VertexShaderErrorMessage(InfoLogLength+1);
-		glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-		printf("%s\n", &VertexShaderErrorMessage[0]);
-	}
-
-	// Compile Fragment Shader
-	printf("Compiling shader : %s\n", fragment_file_path);
-	char const * FragmentSourcePointer = FragmentShaderCode.c_str();
-	glShaderSource(FragmentShaderID, 1, &FragmentSourcePointer , NULL);
-	glCompileShader(FragmentShaderID);
-
-	// Check Fragment Shader
-	glGetShaderiv(FragmentShaderID, GL_COMPILE_STATUS, &Result);
-	glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	if ( InfoLogLength > 0 ){
-		std::vector<char> FragmentShaderErrorMessage(InfoLogLength+1);
-		glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-		printf("%s\n", &FragmentShaderErrorMessage[0]);
-	}
-
-	// Link the program
-	printf("Linking program\n");
-	GLuint ProgramID = glCreateProgram();
-	glAttachShader(ProgramID, VertexShaderID);
-	glAttachShader(ProgramID, FragmentShaderID);
-	glLinkProgram(ProgramID);
-
-	// Check the program
-	glGetProgramiv(ProgramID, GL_LINK_STATUS, &Result);
-	glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	if ( InfoLogLength > 0 ){
-		std::vector<char> ProgramErrorMessage(InfoLogLength+1);
-		glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
-		printf("%s\n", &ProgramErrorMessage[0]);
-	}
-	
-	glDetachShader(ProgramID, VertexShaderID);
-	glDetachShader(ProgramID, FragmentShaderID);
-	
-	glDeleteShader(VertexShaderID);
-	glDeleteShader(FragmentShaderID);
-
-	return ProgramID;
+// Initialization routine.
+void setup() {
+  // Set background (or clearing) color.
+  //            r    g    b    a
+  glClearColor(1.0, 1.0, 1.0, 0.0);
+  direction = UP;
 }
 
-const int SCREEN_HEIGHT = 768;
-const int SCREEN_WIDTH = 1024;
+void update() {
+  switch (direction) {
+    case UP:
+      head.y++; break;
+    case DOWN:
+      head.y--; break;
+    case LEFT:
+      head.x--; break;
+    case RIGHT:
+      head.x++; break;
+  }
+}
 
-int main() {
-    glewExperimental = true; // Needed for core profile
-    if( !glfwInit() )
-    {
-        fprintf( stderr, "Failed to initialize GLFW\n" );
-        return -1;
-    }
+void draw() {
+// Draw a polygon with specified vertices.
+  snake_section* cell = &head;
+  while(cell != nullptr) {
+    square_at(cell->x, cell->y);
+    cell = cell->tail;
+  }
+}
 
-    glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // We want OpenGL 3.3
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL 
+// Keyboard input processing routine.
+void keyInput(unsigned char key, int x, int y) {
+  switch(key) {
+    case '\27': // Press escape to exit.
+      exit(0);
+      break;
+    case 'a':
+      direction = LEFT;
+      break;
+    case 'w':
+      direction = UP;
+      break;
+    case 'd':
+      direction = RIGHT;
+      break;
+    case 's':
+      direction = DOWN;
+      break;
 
-    // Open a window and create its OpenGL context
-    GLFWwindow* window; // (In the accompanying source code, this variable is global for simplicity)
-    window = glfwCreateWindow( SCREEN_WIDTH, SCREEN_HEIGHT, "Snakey snake!", NULL, NULL);
-    if( window == NULL ){
-        fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible.\n" );
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window); // Initialize GLEW
-    glewExperimental=true; // Needed in core profile
-    if (glewInit() != GLEW_OK) {
-        fprintf(stderr, "Failed to initialize GLEW\n");
-        return -1;
-    }
-
-
-
-    // Setup
-    GLuint VertexArrayID;
-    glGenVertexArrays(1, &VertexArrayID);
-    glBindVertexArray(VertexArrayID);
-
-    // An array of 3 vectors which represents 3 vertices
-    static const GLfloat g_vertex_buffer_data[] = {
-        -1.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f,
-        0.0f,  1.0f, 0.0f,
-    };
-
-    // This will identify our vertex buffer
-    GLuint vertexbuffer;
-    // Generate 1 buffer, put the resulting identifier in vertexbuffer
-    glGenBuffers(1, &vertexbuffer);
-    // The following commands will talk about our 'vertexbuffer' buffer
-    glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-    // Give our vertices to OpenGL.
-    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
-
-    GLuint programID = LoadShaders( "common/shader.v", "common/shader.f" );
-
-    glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+    default:
+      break;
+  }
+}
 
 
-    // Ensure we can capture the escape key being pressed below
-    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-
-    do{
-        // Clear the screen. It's not mentioned before Tutorial 02, but it can cause flickering, so it's there nonetheless.
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-        glUseProgram(programID);
-
-        // 1st attribute buffer : vertices
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-        glVertexAttribPointer(
-        0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-        3,                  // size
-        GL_FLOAT,           // type
-        GL_FALSE,           // normalized?
-        0,                  // stride
-        (void*)0            // array buffer offset
-        );
-        // Draw the triangle !
-        glDrawArrays(GL_TRIANGLES, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
-        glDisableVertexAttribArray(0);
 
 
-        // Swap buffers
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+//////////////////////////////////////////////////////////////////
+////
 
-    } // Check if the ESC key was pressed or the window was closed
-    while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
-       glfwWindowShouldClose(window) == 0 );
+const float SQUARE_SIZE = 15.0;
+
+static int screen_width = 0;  // will be set to actual screensize
+static int screen_height = 0;  // will be set to actual screensize
+
+void idle() {
+  static auto start = chrono::steady_clock::now();
+  auto now = chrono::steady_clock::now();
+  auto delta = now - start;
+  const auto nano_to_sec = 1e9;
+  if (delta.count() > nano_to_sec / 5) {  // 5 times per second
+    start = now;
+    update();
+    glutPostRedisplay();
+  }
+}
+
+void square_at(int x, int y) {
+  glBegin(GL_POLYGON);
+    glVertex3f(x * SQUARE_SIZE      , y * SQUARE_SIZE, 0.0);
+    glVertex3f((x + 1) * SQUARE_SIZE, y * SQUARE_SIZE, 0.0);
+    glVertex3f((x + 1) * SQUARE_SIZE, (y + 1) * SQUARE_SIZE, 0.0);
+    glVertex3f(x * SQUARE_SIZE      , (y + 1) * SQUARE_SIZE, 0.0);
+  glEnd();
+}
+
+void drawScene() {
+  // Clear screen to background color.
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  // Set foreground (or drawing) color.
+  glColor3f(0.0, 0.0, 0.0);
+
+  draw();
+
+  // Flush created objects to the screen, i.e., force rendering.
+  glFlush(); 
+}
+
+// OpenGL window reshape routine.
+void resize(int w, int h) {
+
+  // Set viewport size to be entire OpenGL window.
+  screen_height = h;
+  screen_width = w;
+  glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+
+  // Set matrix mode to projection.
+  glMatrixMode(GL_PROJECTION);
+
+  // Clear current projection matrix to identity.
+  glLoadIdentity();
+
+  // Specify the orthographic (or perpendicular) projection, 
+  // i.e., define the viewing box.
+  glOrtho(0.0, w, 0.0, h, -1.0, 1.0);
+
+  // Set matrix mode to modelview.
+  glMatrixMode(GL_MODELVIEW);
+
+  // Clear current modelview matrix to identity.
+  glLoadIdentity();
+}
+
+// Main routine: defines window properties, creates window,
+// registers callback routines and begins processing.
+int main(int argc, char **argv) {
+
+  // Initialize GLUT.
+  glutInit(&argc, argv);
+
+  // Set display mode as single-buffered and RGB color.
+  glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+
+  // Set OpenGL window size.
+  glutInitWindowSize(GRID_SIZE_WIDTH*SQUARE_SIZE, GRID_SIZE_HEIGHT*SQUARE_SIZE);
+
+  // Set position of OpenGL window upper-left corner.
+  glutInitWindowPosition(100, 100);
+
+  // Create OpenGL window with title.
+  glutCreateWindow("square.cpp");
+
+  // Initialize.
+  setup();
+
+  // Register display routine.
+  glutDisplayFunc(drawScene);
+
+  // Register reshape routine.
+  glutReshapeFunc(resize);
+
+  // Register keyboard routine.
+  glutKeyboardFunc(keyInput);
+  
+  // Register update routine.
+  glutIdleFunc(idle);
+
+  // Begin processing.
+  glutMainLoop();
+  
+  return 0;
 }

@@ -1,5 +1,9 @@
-g++ snake.cpp -std=c++17 -lGL -lGLU -lglfw -lGLEW
+On linux
+```
+g++ snake.cpp -std=c++17 -lGL -lglut
+```
 
-
-
-g++ snake2.cpp -std=c++17 -L/usr/local/lib -framework OpenGL -framework GLUT
+Might work on mac with
+```
+g++ snake.cpp -std=c++17 -L/usr/local/lib -framework OpenGL -framework GLUT
+```
