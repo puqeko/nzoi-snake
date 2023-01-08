@@ -64,6 +64,8 @@ void draw() {
 // Keyboard input processing routine.
 void keyInput(unsigned char key, int x, int y) {
 
+  // These don't do anything but prevent the compiler giving a warning
+  // about the x, y coordinates not being used.
   (void)x;
   (void)y;
 
