@@ -52,7 +52,8 @@ void update() {
 }
 
 void draw() {
-// Draw a polygon with specified vertices.
+  // Draw a polygon with specified vertices by walking a linked list
+  // starting from the snakes head.
   snake_section* cell = &head;
   while(cell != nullptr) {
     square_at(cell->x, cell->y);
@@ -64,9 +65,10 @@ void draw() {
 void keyInput(unsigned char key, int x, int y) {
 
   // silence unused variable warnings
+  // if you do use them then remove these lines
   (void)x;
   (void)y;
-  
+
   switch(key) {
     case '\27': // Press escape to exit.
       exit(0);
