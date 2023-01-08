@@ -62,7 +62,10 @@ void draw() {
 }
 
 // Keyboard input processing routine.
-void keyInput(unsigned char key) {
+void keyInput(unsigned char key, int x, int y) {
+
+  (void)x;
+  (void)y;
 
   switch(key) {
     case '\27': // Press escape to exit.
