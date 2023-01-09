@@ -52,12 +52,21 @@ void update() {
 }
 
 void draw() {
+  // Set foreground (or drawing) color.
+  glColor3f(0.0, 0.0, 0.0);
+
   // Draw a polygon with specified vertices by walking a linked list
   // starting from the snakes head.
   snake_section* cell = &head;
   while(cell != nullptr) {
     square_at(cell->x, cell->y);
     cell = cell->tail;
+  }
+
+  // draw score
+  glRasterPos2i(20, 20);
+  for (auto c : "Score: 0") {
+    glutBitmapCharacter(GLUT_BITMAP_9_BY_15, c);
   }
 }
 
@@ -126,9 +135,6 @@ void square_at(int x, int y) {
 void drawScene() {
   // Clear screen to background color.
   glClear(GL_COLOR_BUFFER_BIT);
-
-  // Set foreground (or drawing) color.
-  glColor3f(0.0, 0.0, 0.0);
 
   draw();
 
